@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "GoveeThermometer",
   "pluginType": "platform",
   "singular": true,
   "schema": {
@@ -10,6 +10,12 @@
         "type": "string",
         "required": true,
         "default": "Example Dynamic Platform"
+      },
+      "key": {
+        "title": "Govee API Key",
+        "type": "string",
+        "required": true,
+        "default": "xxx1xx11-xxx1-xxx1-x11x-1x11x1x1111x"
       }
     }
   }

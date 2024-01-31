@@ -1,54 +1,57 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 
-import { ExampleHomebridgePlatform } from './platform';
+import { GoveeThermometerPlatform } from './platform';
 
 /**
  * Platform Accessory
  * An instance of this class is created for each accessory your platform registers
  * Each accessory may expose multiple services of different service types.
  */
-export class ExamplePlatformAccessory {
-  private service: Service;
+export class GoveeThermoHydrometerAccessory {
+  private tempService: Service;
+  private humidService: Service;
 
   /**
    * These are just used to create a working example
    * You should implement your own code to track the state of your accessory
    */
-  private exampleStates = {
-    On: false,
-    Brightness: 100,
+  private initialStates = {
+    Temperature: 32.0,
+    Humidity: 0,
   };
 
   constructor(
-    private readonly platform: ExampleHomebridgePlatform,
+    private readonly platform: GoveeThermometerPlatform,
     private readonly accessory: PlatformAccessory,
   ) {
 
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
-      .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Default-Manufacturer')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
+      .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Govee')
+      .setCharacteristic(this.platform.Characteristic.Model, 'H5179')
       .setCharacteristic(this.platform.Characteristic.SerialNumber, 'Default-Serial');
 
     // get the LightBulb service if it exists, otherwise create a new LightBulb service
     // you can create multiple services for each accessory
-    this.service = this.accessory.getService(this.platform.Service.Lightbulb) || this.accessory.addService(this.platform.Service.Lightbulb);
+    this.tempService = this.accessory.getService(this.platform.Service.TemperatureSensor) ||
+      this.accessory.addService(this.platform.Service.TemperatureSensor);
+    this.humidService = this.accessory.getService(this.platform.Service.HumiditySensor) ||
+      this.accessory.addService(this.platform.Service.HumiditySensor);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
-    this.service.setCharacteristic(this.platform.Characteristic.Name, accessory.context.device.exampleDisplayName);
+    this.tempService.setCharacteristic(this.platform.Characteristic.Name, this.accessory.context.device.deviceName);
+    this.humidService.setCharacteristic(this.platform.Characteristic.Name, this.accessory.context.device.deviceName);
 
     // each service must implement at-minimum the "required characteristics" for the given service type
     // see https://developers.homebridge.io/#/service/Lightbulb
 
     // register handlers for the On/Off Characteristic
-    this.service.getCharacteristic(this.platform.Characteristic.On)
-      .onSet(this.setOn.bind(this))                // SET - bind to the `setOn` method below
-      .onGet(this.getOn.bind(this));               // GET - bind to the `getOn` method below
+    this.tempService.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
+      .onGet(this.getTemp.bind(this)); // GET - bind to the `getOn` method below
 
-    // register handlers for the Brightness Characteristic
-    this.service.getCharacteristic(this.platform.Characteristic.Brightness)
-      .onSet(this.setBrightness.bind(this));       // SET - bind to the 'setBrightness` method below
+    this.humidService.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
+      .onGet(this.getHumid.bind(this));
 
     /**
      * Creating multiple services of the same type.
@@ -62,11 +65,11 @@ export class ExamplePlatformAccessory {
      */
 
     // Example: add two "motion sensor" services to the accessory
-    const motionSensorOneService = this.accessory.getService('Motion Sensor One Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor One Name', 'YourUniqueIdentifier-1');
+    // const motionSensorOneService = this.accessory.getService('Motion Sensor One Name') ||
+    //   this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor One Name', 'YourUniqueIdentifier-1');
 
-    const motionSensorTwoService = this.accessory.getService('Motion Sensor Two Name') ||
-      this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor Two Name', 'YourUniqueIdentifier-2');
+    // const motionSensorTwoService = this.accessory.getService('Motion Sensor Two Name') ||
+    //   this.accessory.addService(this.platform.Service.MotionSensor, 'Motion Sensor Two Name', 'YourUniqueIdentifier-2');
 
     /**
      * Updating characteristics values asynchronously.
@@ -77,30 +80,30 @@ export class ExamplePlatformAccessory {
      * the `updateCharacteristic` method.
      *
      */
-    let motionDetected = false;
-    setInterval(() => {
-      // EXAMPLE - inverse the trigger
-      motionDetected = !motionDetected;
+    // let motionDetected = false;
+    // setInterval(() => {
+    //   // EXAMPLE - inverse the trigger
+    //   motionDetected = !motionDetected;
 
-      // push the new value to HomeKit
-      motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
-      motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
+    //   // push the new value to HomeKit
+    //   motionSensorOneService.updateCharacteristic(this.platform.Characteristic.MotionDetected, motionDetected);
+    //   motionSensorTwoService.updateCharacteristic(this.platform.Characteristic.MotionDetected, !motionDetected);
 
-      this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
-      this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
-    }, 10000);
+    //   this.platform.log.debug('Triggering motionSensorOneService:', motionDetected);
+    //   this.platform.log.debug('Triggering motionSensorTwoService:', !motionDetected);
+    // }, 10000);
   }
 
   /**
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
-  async setOn(value: CharacteristicValue) {
-    // implement your own code to turn your device on/off
-    this.exampleStates.On = value as boolean;
+  // async setOn(value: CharacteristicValue) {
+  //   // implement your own code to turn your device on/off
+  //   this.exampleStates.On = value as boolean;
 
-    this.platform.log.debug('Set Characteristic On ->', value);
-  }
+  //   this.platform.log.debug('Set Characteristic On ->', value);
+  // }
 
   /**
    * Handle the "GET" requests from HomeKit
@@ -115,27 +118,76 @@ export class ExamplePlatformAccessory {
    * @example
    * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
    */
-  async getOn(): Promise<CharacteristicValue> {
-    // implement your own code to check if the device is on
-    const isOn = this.exampleStates.On;
+  async getTemp(): Promise<CharacteristicValue> {
+    const stateURL = 'https://openapi.api.govee.com/router/api/v1/device/state';
+    const response = await fetch(stateURL, {
+      method: 'POST',
+      body: JSON.stringify({
+        requestId: 'uuid',
+        payload: {
+          sku: 'H5179',
+          device: this.accessory.context.device.device,
+        },
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Govee-API-Key': this.platform.config.key,
+      },
+    });
 
-    this.platform.log.debug('Get Characteristic On ->', isOn);
+    if (!response.ok) {
+      // this.platform.log.error(response.statusText)
+      this.platform.log.error('Error fetching device state');
+    }
+
+    // implement your own code to check if the device is on
+    const responseJSON = await response.json();
+    const temp = responseJSON.payload.capabilities[1].state.value / 100;
+
+    this.platform.log.debug('Get Characteristic Temp ->', temp);
 
     // if you need to return an error to show the device as "Not Responding" in the Home app:
     // throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
 
-    return isOn;
+    return temp;
   }
 
   /**
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, changing the Brightness
    */
-  async setBrightness(value: CharacteristicValue) {
-    // implement your own code to set the brightness
-    this.exampleStates.Brightness = value as number;
+  async getHumid(): Promise<CharacteristicValue> {
+    const stateURL = 'https://openapi.api.govee.com/router/api/v1/device/state';
+    const response = await fetch(stateURL, {
+      method: 'POST',
+      body: JSON.stringify({
+        requestId: 'uuid',
+        payload: {
+          sku: 'H5179',
+          device: this.accessory.context.device.device,
+        },
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Govee-API-Key': this.platform.config.key,
+      },
+    });
 
-    this.platform.log.debug('Set Characteristic Brightness -> ', value);
+    if (!response.ok) {
+      // this.platform.log.error(response.statusText)
+      this.platform.log.error('Error fetching device state');
+    }
+
+    // implement your own code to check if the device is on
+    const responseJSON = await response.json();
+    const humid = responseJSON.payload.capabilities[2].state.value.currentHumidity / 100;
+
+    this.platform.log.debug('Get Characteristic Temp ->', humid);
+
+    // if you need to return an error to show the device as "Not Responding" in the Home app:
+    // throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+
+    return humid;
   }
 
 }
